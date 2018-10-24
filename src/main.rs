@@ -1,3 +1,19 @@
+/*
+ *  Copyright © 2018 Gianmarco Garrisi
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 extern crate chrono;
 #[macro_use] extern crate serde_derive;
 #[macro_use] extern crate quicli;
@@ -40,14 +56,17 @@ struct Locations {
 
 #[derive(StructOpt)]
 enum Period {
+    /// Select all the locations from a certain moment. The time instant must be expressed in [RFC3339](https://tools.ietf.org/html/rfc3339) format: e.g. 1996-12-19T16:39:57-08:00
     #[structopt(name = "from")]
     From{
         from: DateTime<Local>
     },
+    /// Select all the locations collected until a certain moment. The time instant must be expressed in [RFC3339](https://tools.ietf.org/html/rfc3339) format: e.g. 1996-12-19T16:39:57-08:00
     #[structopt(name = "to")]
     To{
         to: DateTime<Local>
     },
+    /// Select all the locations collected within a temporal window. The time instants must be expressed in [RFC3339](https://tools.ietf.org/html/rfc3339) format: e.g. 1996-12-19T16:39:57-08:00
     #[structopt(name = "fromto")]
     FromTo{
         from: DateTime<Local>,
@@ -58,7 +77,9 @@ enum Period {
 #[derive(StructOpt)]
 /// Filter locations data 
 struct Interface {
+    /// The file containing the data to filter
     filename: String,
+    /// Add a filter based on a time period
     #[structopt(subcommand)]
     period: Option<Period>,
     
