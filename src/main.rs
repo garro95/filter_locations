@@ -27,14 +27,17 @@ use quicli::prelude::*;
 
 use std::fs::File;
 use std::str::FromStr;
+use std::io::BufReader;
 
 fn deserialize_timestamp<'de, D>(deserializer: D) -> std::result::Result<DateTime<Utc>, D::Error>
 where D: serde::de::Deserializer<'de> {
     let s: String = serde::Deserialize::deserialize(deserializer)?;
     let n = u64::from_str(s.as_str());
     match n {
-        Ok(n) => Ok(DateTime::from_utc(NaiveDateTime::from_timestamp((n/1000) as i64, (n%1000*1000) as u32), Utc)),
-        Err(_) => Err(serde::de::Error::invalid_value(serde::de::Unexpected::Str(s.as_str()), &"a string containing numbers")),
+        Ok(n) => Ok(DateTime::from_utc(NaiveDateTime::from_timestamp((n/1000) as i64,
+                                                                     (n%1000*1000) as u32), Utc)),
+        Err(_) => Err(serde::de::Error::invalid_value(serde::de::Unexpected::Str(s.as_str()),
+                                                      &"a string containing numbers")),
     }
 }
 
@@ -56,17 +59,23 @@ struct Locations {
 
 #[derive(StructOpt)]
 enum Period {
-    /// Select all the locations from a certain moment. The time instant must be expressed in [RFC3339](https://tools.ietf.org/html/rfc3339) format: e.g. 1996-12-19T16:39:57-08:00
+    /// Select all the locations from a certain moment.
+    /// The time instant must be expressed in [RFC3339](https://tools.ietf.org/html/rfc3339)
+    /// format: e.g. 1996-12-19T16:39:57-08:00
     #[structopt(name = "from")]
     From{
         from: DateTime<Local>
     },
-    /// Select all the locations collected until a certain moment. The time instant must be expressed in [RFC3339](https://tools.ietf.org/html/rfc3339) format: e.g. 1996-12-19T16:39:57-08:00
+    /// Select all the locations collected until a certain moment.
+    /// The time instant must be expressed in [RFC3339](https://tools.ietf.org/html/rfc3339)
+    /// format: e.g. 1996-12-19T16:39:57-08:00
     #[structopt(name = "to")]
     To{
         to: DateTime<Local>
     },
-    /// Select all the locations collected within a temporal window. The time instants must be expressed in [RFC3339](https://tools.ietf.org/html/rfc3339) format: e.g. 1996-12-19T16:39:57-08:00
+    /// Select all the locations collected within a temporal window.
+    /// The time instants must be expressed in [RFC3339](https://tools.ietf.org/html/rfc3339)
+    /// format: e.g. 1996-12-19T16:39:57-08:00
     #[structopt(name = "fromto")]
     FromTo{
         from: DateTime<Local>,
@@ -87,7 +96,9 @@ struct Interface {
 
 main!(|args: Interface| {
     let file = File::open(&args.filename)?;
-    let locations: Locations = serde_json::from_reader(file)?;
+    let bufreader = BufReader::new(file);
+    let locations: Locations = serde_json::from_reader(bufreader)?;
+    println!("File read");
 
     let iter = locations.locations.par_iter();
     let iter = iter.filter(|x| {
@@ -95,10 +106,13 @@ main!(|args: Interface| {
             None => true,
             Some(Period::From{from}) => x.timestamp > from.with_timezone(&Utc),
             Some(Period::To{to}) => x.timestamp < to.with_timezone(&Utc),
-            Some(Period::FromTo{from, to}) => x.timestamp > from.with_timezone(&Utc) && x.timestamp < to.with_timezone(&Utc),
+            Some(Period::FromTo{from, to}) => x.timestamp > from.with_timezone(&Utc)
+                && x.timestamp < to.with_timezone(&Utc),
         }
     });
 
-    println!("Loaded {} locations", locations.locations.par_iter().count());
-    println!("Filtered {} locations", iter.count());
+    let (a,b) = (locations.locations.par_iter().count(), iter.count());
+
+    println!("Loaded {} locations", a);
+    println!("Filtered {} locations", b);
 });
